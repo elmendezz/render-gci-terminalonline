@@ -1,0 +1,28 @@
+name: CI with Live Logs
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Ejecutar build y enviar logs en vivo a Render
+        env:
+          WEBHOOK_URL: "https://TU-APP.onrender.com/auth/terminalonly"
+        run: |
+          # Reemplaza 'npm run build' con el comando que quieres monitorear.
+          # 2>&1 asegura que tanto los errores como las salidas normales se envíen.
+          
+          npm run build 2>&1 | while IFS= read -r line; do
+            # Enviamos cada línea al servidor usando curl
+            curl -s -X POST -H "Content-Type: application/json" \
+                 -d "{\"log\": \"$line\"}" \
+                 "$WEBHOOK_URL/${{ github.run_id }}" > /dev/null
+            
+            # También lo imprimimos en la consola de GitHub Actions
+            echo "$line"
+          done

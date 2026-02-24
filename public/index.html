@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live CI Logs</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            margin: 0;
+            overflow-y: auto;
+        }
+        #terminal {
+            white-space: pre-wrap; /* Respeta los espacios y saltos de línea */
+            word-wrap: break-word;
+        }
+        .log-line {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Terminal en vivo de GitHub CI</h2>
+    <div id="terminal"></div>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const eventSource = new EventSource('/stream');
+
+        // Función para renderizar una línea
+        function addLogLine(text) {
+            // Soporte para actualizar la misma línea (útil para barras de progreso)
+            // Si el texto termina con un retorno de carro o es muy similar al anterior,
+            // podemos reemplazar el último hijo en lugar de añadir uno nuevo.
+            if (text.includes('\r')) {
+                text = text.replace(/\r/g, ''); // Limpiar el \r
+                if (terminal.lastChild) {
+                    terminal.lastChild.textContent = text;
+                    return;
+                }
+            }
+
+            const div = document.createElement('div');
+            div.className = 'log-line';
+            div.textContent = text;
+            terminal.appendChild(div);
+
+            // Mantener solo 100 elementos en el DOM
+            while (terminal.children.length > 100) {
+                terminal.removeChild(terminal.firstChild);
+            }
+
+            // Auto-scroll hacia abajo
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        // Escuchar mensajes del servidor
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.init) {
+                // Carga inicial del historial
+                terminal.innerHTML = '';
+                data.init.forEach(line => addLogLine(line));
+            } else if (data.line) {
+                // Nueva línea en tiempo real
+                addLogLine(data.line);
+            }
+        };
+    </script>
+</body>
+</html>
